@@ -1,0 +1,30 @@
+Step 1: define the serial name of your black magic probe:.
+	Example:
+	BM_SERIAL_NAME := /dev/cu.usbmodem7BB09FB1
+
+Step 2: define your application and softdevice directory.
+	Example:
+	HEX_APP_DIRECTORY := $(OUTPUT_DIRECTORY)/projectname.hex
+	HEX_SOTDEVICE_DIRECTORY := $(SDK_ROOT)/components/softdevice/s132/hex/s132_nrf52_5.0.0_softdevice.hex
+
+Step 3: add the blackMagic to your makefile target
+
+#Black Magic Support
+BM_SERIAL_NAME := 'target extended-remote /dev/cu.usbmodem7BB09FB1'
+HEX_APP_DIRECTORY := $(OUTPUT_DIRECTORY)/nrf52840_xxaa.hex
+HEX_SOTDEVICE_DIRECTORY := $(SDK_ROOT)/components/softdevice/s140/hex/s140_nrf52_6.0.0_softdevice.hex
+
+flash_black: $(OUTPUT_DIRECTORY)/nrf52840_xxaa.hex
+	@echo Flashing: $<
+	arm-none-eabi-gdb -nx --batch -ex $(BM_SERIAL_NAME) \
+	-x tools/blackMagic/black_magic_probe_flash.scr $<
+
+flash_softdevice_black: $(HEX_SOTDEVICE_DIRECTORY)
+  @echo Flashing softdevice: $<
+	arm-none-eabi-gdb -nx --batch -ex $(BM_SERIAL_NAME) \
+	-x tools/blackMagic/black_magic_probe_flash.scr $<
+
+erase_black:
+	@echo Full Erase Chip!
+	arm-none-eabi-gdb -nx --batch -ex $(BM_SERIAL_NAME) \
+	-x tools/blackMagic/black_magic_probe_erase.scr
