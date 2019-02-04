@@ -41,7 +41,7 @@ void servicesInitApp_X(void)
   prop_attr_t prop[MAX_CHARACTERISTIC_X];
 
   service_x.uuid_handle.uuid = SERVICE_UUID_SERVICE_X;
-  service_x.service_id = 0x0001;
+  service_x.service_id = SERVICE_X_ID;
   char_x[0].char_id = SERVICE_X_CHAR_A_ID;
   char_x[0].uuid16 = SERVICE_X_UUID_CHAR_A;
 
@@ -52,11 +52,17 @@ void servicesInitApp_X(void)
   prop[0].read = 1;
   if (prop[0].read == 1)
   {
-    uint8_t value_A[10] =
+    uint8_t value_read[10] =
         {0x01, 0x02, 0x01, 0x01, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09};
-    memcpy(attr_char_x[0].attr_char_a, value_A, sizeof(value_A));
+    memcpy(attr_char_x[0].attr_char_read, value_read, sizeof(value_read));
   }
   prop[0].write = 0;
+  if (prop[0].write == 1)
+  {
+    uint8_t value_write[4] =
+        {0x00, 0x00, 0x00, 0x00};
+    memcpy(attr_char_x[0].attr_char_write, value_write, sizeof(value_write));
+  }
   prop[0].notify = 0;
 
   /*################################################### */
@@ -70,11 +76,17 @@ void servicesInitApp_X(void)
   prop[1].read = 0;
   if (prop[0].read == 1)
   {
-    uint8_t value_B[10] =
+    uint8_t value_read[10] =
         {0x02, 0x01, 0x02, 0x02, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09};
-    memcpy(attr_char_x[1].attr_char_a, value_B, sizeof(value_B));
+    memcpy(attr_char_x[1].attr_char_read, value_read, sizeof(value_read));
   }
   prop[1].write = 1;
+  if (prop[1].write == 1)
+  {
+    uint8_t value_write[4] =
+        {0x00, 0x00, 0x00, 0x00};
+    memcpy(attr_char_x[1].attr_char_write, value_write, sizeof(value_write));
+  }
   prop[1].notify = 0;
 
   err_code =
@@ -98,7 +110,7 @@ void servicesInitApp_Y(void)
   prop_attr_t prop[MAX_CHARACTERISTIC_Y];
 
   service_y.uuid_handle.uuid = SERVICE_UUID_SERVICE_Y;
-  service_y.service_id = 0x0002;
+  service_y.service_id = SERVICE_Y_ID;
 
   char_y[0].char_id = SERVICE_Y_CHAR_A_ID;
   char_y[0].uuid16 = SERVICE_Y_UUID_CHAR_A;
@@ -109,11 +121,17 @@ void servicesInitApp_Y(void)
   prop[0].read = 1;
   if (prop[0].read == 1)
   {
-    uint8_t value_C[10] =
+    uint8_t value_read[10] =
         {0x00, 0x01, 0x01, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09};
-    memcpy(attr_char_y[0].attr_char_a, value_C, sizeof(value_C));
+    memcpy(attr_char_y[0].attr_char_read, value_read, sizeof(value_read));
   }
   prop[0].write = 0;
+  if (prop[0].write == 1)
+  {
+    uint8_t value_write[4] =
+        {0x00, 0x00, 0x00, 0x00};
+    memcpy(attr_char_y[0].attr_char_write, value_write, sizeof(value_write));
+  }
   prop[0].notify = 0;
 
   /*################################################### */
@@ -127,15 +145,66 @@ void servicesInitApp_Y(void)
   prop[1].read = 0;
   if (prop[1].read == 1)
   {
-    uint8_t value_C[10] =
+    uint8_t value_read[10] =
         {0x00, 0x01, 0x01, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09};
-    memcpy(attr_char_y[0].attr_char_a, value_C, sizeof(value_C));
+    memcpy(attr_char_y[0].attr_char_read, value_read, sizeof(value_read));
   }
   prop[1].write = 1;
+  if (prop[1].write == 1)
+  {
+    uint8_t value_write[4] =
+        {0x00, 0x00, 0x00, 0x00};
+    memcpy(attr_char_y[1].attr_char_write, value_write, sizeof(value_write));
+  }
   prop[1].notify = 0;
 
   err_code =
       bleServiceInit(&ble_s_Y, service_y, char_y, prop, perm, attr_char_y);
+  APP_ERROR_CHECK(err_code);
+}
+
+/************************************/
+/*Third Service                    */
+/************************************/
+// instance of "ble_s_Z" service
+BLE_SERVICE_DEF(ble_s_Z);
+
+void servicesInitApp_Z(void)
+{
+  ret_code_t err_code;
+  service_uuid_t service_z;
+  attr_char_t attr_char_z[MAX_CHARACTERISTIC_Z];
+  service_char_t char_z[MAX_CHARACTERISTIC_Z];
+  attr_perm_t perm[MAX_CHARACTERISTIC_Z];
+  prop_attr_t prop[MAX_CHARACTERISTIC_Z];
+
+  service_z.uuid_handle.uuid = SERVICE_UUID_SERVICE_Z;
+  service_z.service_id = SERVICE_Z_ID;
+
+  char_z[0].char_id = SERVICE_Z_CHAR_A_ID;
+  char_z[0].uuid16 = SERVICE_Z_UUID_CHAR_A;
+
+  perm[0].perm_read = CONN_SEC_MODE_SET_ENC_WITH_MITM;
+  perm[0].perm_write = CONN_SEC_MODE_SET_ENC_WITH_MITM;
+
+  prop[0].read = 1;
+  if (prop[0].read == 1)
+  {
+    uint8_t value_read[10] =
+        {0x00, 0x01, 0x01, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09};
+    memcpy(attr_char_z[0].attr_char_read, value_read, sizeof(value_read));
+  }
+  prop[0].write = 1;
+  if (prop[0].write == 1)
+  {
+    uint8_t value_write[4] =
+        {0x00, 0x00, 0x00, 0x00};
+    memcpy(attr_char_z[0].attr_char_write, value_write, sizeof(value_write));
+  }
+  prop[0].notify = 1;
+
+  err_code =
+      bleServiceInit(&ble_s_Y, service_z, char_z, prop, perm, attr_char_z);
   APP_ERROR_CHECK(err_code);
 }
 
@@ -178,6 +247,7 @@ int main(void)
 
   servicesInitApp_X();
   servicesInitApp_Y();
+  servicesInitApp_Z();
 
   advertisingStart();
 

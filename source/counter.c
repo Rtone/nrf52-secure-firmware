@@ -40,7 +40,7 @@ counter_start (void)
 void
 counter_stop (void)
 {
-  rf_drv_rtc_disable (&m_rtc);
+  nrf_drv_rtc_disable (&m_rtc);
 } 
 
 uint32_t counter_get (void)
