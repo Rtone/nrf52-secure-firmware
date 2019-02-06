@@ -1,7 +1,6 @@
 #ifndef __CONN_H
 #define __CONN_H
 
-
-void connParamsInit ();
+void connParamsInit();
 
 #endif /* __CONN_H */

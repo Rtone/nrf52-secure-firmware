@@ -7,6 +7,43 @@
 #include "nrf_log_default_backends.h"
 #include "aes.h"
 
+/********************************************************************************/
+/*   FUNCTION PROTOTYPES                                                        */
+/********************************************************************************/
+
+static uint32_t
+_bleAddService(ble_service_t *p_service, service_uuid_t service_t);
+
+static uint32_t
+_bleAddCharacteristic(ble_service_t *p_service, service_char_t char_t,
+                      prop_attr_t prop, attr_perm_t attrPerm,
+                      attr_char_t attrChar);
+
+static void
+_writeHandler_X(uint16_t conn_handle, ble_service_t *p_service,
+                ble_gatts_evt_write_t const *dataRec);
+
+static void
+_writeHandler_Y(uint16_t conn_handle, ble_service_t *p_service,
+                uint8_t dataRec, uint8_t offset);
+
+static void
+_writeHandler_Notify(uint16_t conn_handle, ble_service_t *p_service, ble_gatts_evt_write_t const *dataRec);
+
+static uint32_t
+_bleNotifyChar(uint16_t conn_handle, ble_gatts_char_handles_t *char_handle, const uint8_t *value);
+
+static void
+on_write(ble_service_t *p_service, ble_evt_t const *p_ble_evt);
+
+/********************************************************************************/
+/*   --- END of FUNCTION PROTOTYPES ---                                         */
+/********************************************************************************/
+
+/********************************************************************************/
+/*   SERVICES AND CHARACTERISTICS FUNCTION MANAGEMENT                           */
+/********************************************************************************/
+
 static uint32_t
 _bleAddService(ble_service_t *p_service, service_uuid_t service_t)
 {
@@ -18,11 +55,11 @@ _bleAddService(ble_service_t *p_service, service_uuid_t service_t)
   VERIFY_SUCCESS(err_code);
 
   ble_uuid.type = p_service->uuid_type;
-  ble_uuid.uuid = service_t.uuid_handle.uuid;
+  ble_uuid.uuid = service_t.uuidHandle.uuid;
   // Add the custom service to the system
   err_code =
       sd_ble_gatts_service_add(BLE_GATTS_SRVC_TYPE_PRIMARY, &ble_uuid,
-                               &p_service->service_handle);
+                               &p_service->serviceHandle);
   VERIFY_SUCCESS(err_code);
 
   return NRF_SUCCESS;
@@ -30,172 +67,249 @@ _bleAddService(ble_service_t *p_service, service_uuid_t service_t)
 
 static uint32_t
 _bleAddCharacteristic(ble_service_t *p_service, service_char_t char_t,
-                      prop_attr_t prop, attr_perm_t attr_perm,
-                      attr_char_t attr_char)
+                      prop_attr_t prop, attr_perm_t attrPerm,
+                      attr_char_t attrChar)
 {
 
-  ble_gatts_char_md_t char_md;
-  ble_gatts_attr_t attr_char_value;
+  ble_gatts_char_md_t charMd;
+  ble_gatts_attr_t attrCharValue;
   ble_uuid_t ble_uuid;
-  ble_gatts_attr_md_t attr_md;
+  ble_gatts_attr_md_t attrMd;
 
   // characteristic metadata
-  memset(&char_md, 0, sizeof(char_md));
+  memset(&charMd, 0, sizeof(charMd));
 
-  char_md.char_props.read = prop.read;
-  char_md.char_props.write = prop.write;
-  char_md.char_props.notify = prop.notify;
-  char_md.p_char_user_desc = NULL;
-  char_md.p_char_pf = NULL;
-  char_md.p_user_desc_md = NULL;
-  char_md.p_cccd_md = NULL;
-  char_md.p_sccd_md = NULL;
+  charMd.char_props.read = prop.read;
+  charMd.char_props.write = prop.write;
+  charMd.char_props.notify = prop.notify;
+  charMd.p_char_user_desc = NULL;
+  charMd.p_char_pf = NULL;
+  charMd.p_user_desc_md = NULL;
+  charMd.p_cccd_md = NULL;
+  charMd.p_sccd_md = NULL;
 
   // characteristic uuid
   ble_uuid.type = p_service->uuid_type;
   ble_uuid.uuid = char_t.uuid16;
 
   // attribute metadata
-  memset(&attr_md, 0, sizeof(attr_md));
+  memset(&attrMd, 0, sizeof(attrMd));
 
-  switch (attr_perm.perm_read)
+  switch (attrPerm.permRead)
   {
   case 0x01:
-    BLE_GAP_CONN_SEC_MODE_SET_NO_ACCESS(&attr_md.read_perm);
+    BLE_GAP_CONN_SEC_MODE_SET_NO_ACCESS(&attrMd.read_perm);
     break;
 
   case 0x02:
-    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&attr_md.read_perm);
+    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&attrMd.read_perm);
     break;
 
   case 0x03:
-    BLE_GAP_CONN_SEC_MODE_SET_ENC_NO_MITM(&attr_md.read_perm);
+    BLE_GAP_CONN_SEC_MODE_SET_ENC_NO_MITM(&attrMd.read_perm);
     break;
 
   case 0x04:
-    BLE_GAP_CONN_SEC_MODE_SET_ENC_WITH_MITM(&attr_md.read_perm);
+    BLE_GAP_CONN_SEC_MODE_SET_ENC_WITH_MITM(&attrMd.read_perm);
     break;
 
   case 0x05:
-    BLE_GAP_CONN_SEC_MODE_SET_LESC_ENC_WITH_MITM(&attr_md.read_perm);
+    BLE_GAP_CONN_SEC_MODE_SET_LESC_ENC_WITH_MITM(&attrMd.read_perm);
     break;
 
   case 0x06:
-    BLE_GAP_CONN_SEC_MODE_SET_SIGNED_NO_MITM(&attr_md.read_perm);
+    BLE_GAP_CONN_SEC_MODE_SET_SIGNED_NO_MITM(&attrMd.read_perm);
     break;
 
   case 0x07:
-    BLE_GAP_CONN_SEC_MODE_SET_SIGNED_WITH_MITM(&attr_md.read_perm);
+    BLE_GAP_CONN_SEC_MODE_SET_SIGNED_WITH_MITM(&attrMd.read_perm);
     break;
   }
 
-  switch (attr_perm.perm_write)
+  switch (attrPerm.permWrite)
   {
   case 0x01:
-    BLE_GAP_CONN_SEC_MODE_SET_NO_ACCESS(&attr_md.write_perm);
+    BLE_GAP_CONN_SEC_MODE_SET_NO_ACCESS(&attrMd.write_perm);
     break;
 
   case 0x02:
-    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&attr_md.write_perm);
+    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&attrMd.write_perm);
     break;
 
   case 0x03:
-    BLE_GAP_CONN_SEC_MODE_SET_ENC_NO_MITM(&attr_md.write_perm);
+    BLE_GAP_CONN_SEC_MODE_SET_ENC_NO_MITM(&attrMd.write_perm);
     break;
 
   case 0x04:
-    BLE_GAP_CONN_SEC_MODE_SET_ENC_WITH_MITM(&attr_md.write_perm);
+    BLE_GAP_CONN_SEC_MODE_SET_ENC_WITH_MITM(&attrMd.write_perm);
     break;
 
   case 0x05:
-    BLE_GAP_CONN_SEC_MODE_SET_LESC_ENC_WITH_MITM(&attr_md.write_perm);
+    BLE_GAP_CONN_SEC_MODE_SET_LESC_ENC_WITH_MITM(&attrMd.write_perm);
     break;
 
   case 0x06:
-    BLE_GAP_CONN_SEC_MODE_SET_SIGNED_NO_MITM(&attr_md.write_perm);
+    BLE_GAP_CONN_SEC_MODE_SET_SIGNED_NO_MITM(&attrMd.write_perm);
     break;
 
   case 0x07:
-    BLE_GAP_CONN_SEC_MODE_SET_SIGNED_WITH_MITM(&attr_md.write_perm);
+    BLE_GAP_CONN_SEC_MODE_SET_SIGNED_WITH_MITM(&attrMd.write_perm);
     break;
   }
 
-  attr_md.vloc = BLE_GATTS_VLOC_STACK;
-  attr_md.rd_auth = 0;
-  attr_md.wr_auth = 0;
-  attr_md.vlen = 0;
+  attrMd.vloc = BLE_GATTS_VLOC_STACK;
+  attrMd.rd_auth = 0;
+  attrMd.wr_auth = 0;
+  attrMd.vlen = 0;
 
   // attribute data
-  memset(&attr_char_value, 0, sizeof(attr_char_value));
+  memset(&attrCharValue, 0, sizeof(attrCharValue));
 
-  attr_char_value.p_uuid = &ble_uuid;
-  attr_char_value.p_attr_md = &attr_md;
-  attr_char_value.init_offs = 0;
+  attrCharValue.p_uuid = &ble_uuid;
+  attrCharValue.p_attr_md = &attrMd;
+  attrCharValue.init_offs = 0;
 
   if (prop.read == 1 && prop.notify == 0)
   {
-    attr_char_value.init_len = sizeof(attr_char.attr_char_read);
-    attr_char_value.max_len = sizeof(attr_char.attr_char_read);
-    attr_char_value.p_value = attr_char.attr_char_read;
+    attrCharValue.init_len = sizeof(attrChar.attrCharRead);
+    attrCharValue.max_len = sizeof(attrChar.attrCharRead);
+    attrCharValue.p_value = attrChar.attrCharRead;
   }
   else if (prop.write == 1 && prop.notify == 0)
   {
-    attr_char_value.init_len = 0;
-    attr_char_value.max_len = sizeof(attr_char.attr_char_write);
-    attr_char_value.p_value = NULL;
+    attrCharValue.init_len = 0;
+    attrCharValue.max_len = sizeof(attrChar.attrCharWrite);
+    attrCharValue.p_value = NULL;
   }
   else
   {
-    attr_char_value.init_len = 4;
-    attr_char_value.max_len = 4;
-    attr_char_value.p_value = NULL;
+    attrCharValue.init_len = 4;
+    attrCharValue.max_len = 4;
+    attrCharValue.p_value = NULL;
   }
 
   if (prop.notify == 0)
   {
     if (prop.write == 1)
     {
-      switch (char_t.char_id)
+      switch (char_t.charID)
       {
       case SERVICE_X_CHAR_B_ID:
-        return sd_ble_gatts_characteristic_add(p_service->service_handle,
-                                               &char_md,
-                                               &attr_char_value,
-                                               &p_service->char_xa_handles);
+        return sd_ble_gatts_characteristic_add(p_service->serviceHandle,
+                                               &charMd,
+                                               &attrCharValue,
+                                               &p_service->charXaWriteHandles);
         break;
       case SERVICE_Y_CHAR_B_ID:
-        return sd_ble_gatts_characteristic_add(p_service->service_handle,
-                                               &char_md,
-                                               &attr_char_value,
-                                               &p_service->char_ya_handles);
+        return sd_ble_gatts_characteristic_add(p_service->serviceHandle,
+                                               &charMd,
+                                               &attrCharValue,
+                                               &p_service->charXaWriteHandles);
         break;
       default:
-        return sd_ble_gatts_characteristic_add(p_service->service_handle,
-                                               &char_md,
-                                               &attr_char_value,
-                                               &p_service->char_default_handles);
+        return sd_ble_gatts_characteristic_add(p_service->serviceHandle,
+                                               &charMd,
+                                               &attrCharValue,
+                                               &p_service->charDefaultHandles);
       }
     }
     else
     {
-      return sd_ble_gatts_characteristic_add(p_service->service_handle,
-                                             &char_md,
-                                             &attr_char_value,
-                                             &p_service->char_default_handles);
+      return sd_ble_gatts_characteristic_add(p_service->serviceHandle,
+                                             &charMd,
+                                             &attrCharValue,
+                                             &p_service->charDefaultHandles);
     }
   }
   else
   {
-    return sd_ble_gatts_characteristic_add(p_service->service_handle,
-                                           &char_md,
-                                           &attr_char_value,
-                                           &p_service->char_notify_handles);
+    return sd_ble_gatts_characteristic_add(p_service->serviceHandle,
+                                           &charMd,
+                                           &attrCharValue,
+                                           &p_service->charNotifyHandles);
   }
 }
 
+void bleServiceOnBleEvt(ble_evt_t const *p_ble_evt, void *p_context)
+{
+  ble_service_t *p_service = (ble_service_t *)p_context;
+
+  switch (p_ble_evt->header.evt_id)
+  {
+  case BLE_GATTS_EVT_WRITE:
+    on_write(p_service, p_ble_evt);
+    break;
+
+  default:
+    // No implementation needed.
+    break;
+  }
+}
+
+uint32_t
+bleServiceInit(ble_service_t *p_service, service_uuid_t service_t,
+               service_char_t *char_t, prop_attr_t *attrProp,
+               attr_perm_t *attrPerm, attr_char_t *attrChar)
+{
+  uint32_t err_code;
+
+  // Add service.
+  err_code = _bleAddService(p_service, service_t);
+  VERIFY_SUCCESS(err_code);
+
+  if (service_t.serviceID == SERVICE_X_ID)
+  {
+    // Add characteristics.
+    for (int i = 0; i < MAX_CHARACTERISTIC_X; i++)
+    {
+      err_code =
+          _bleAddCharacteristic(p_service, char_t[i], attrProp[i],
+                                attrPerm[i], attrChar[i]);
+      VERIFY_SUCCESS(err_code);
+    }
+  }
+
+  if (service_t.serviceID == SERVICE_Y_ID)
+  {
+    // Add characteristics.
+    for (int i = 0; i < MAX_CHARACTERISTIC_Y; i++)
+    {
+      err_code =
+          _bleAddCharacteristic(p_service, char_t[i], attrProp[i],
+                                attrPerm[i], attrChar[i]);
+      VERIFY_SUCCESS(err_code);
+    }
+  }
+
+  if (service_t.serviceID == SERVICE_Z_ID)
+  {
+    // Add characteristics.
+    for (int i = 0; i < MAX_CHARACTERISTIC_Z; i++)
+    {
+      err_code =
+          _bleAddCharacteristic(p_service, char_t[i], attrProp[i],
+                                attrPerm[i], attrChar[i]);
+      VERIFY_SUCCESS(err_code);
+    }
+  }
+
+  return NRF_SUCCESS;
+}
+
+/********************************************************************************/
+/*   --- END of SERVICES AND CHARACTERISTICS FUNCTION MANAGEMENT ---            */
+/********************************************************************************/
+
+/********************************************************************************/
+/*   HANDLERS                                                                   */
+/********************************************************************************/
+
+/*
+** handler to manage write events for the "SERVICE_Y_CHAR_B_ID" characteristic 
+*/
 static void
 _writeHandler_X(uint16_t conn_handle, ble_service_t *p_service,
-                ble_gatts_evt_write_t const *data_rec)
+                ble_gatts_evt_write_t const *dataRec)
 {
 
   uint8_t plaintext[16] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -210,9 +324,9 @@ _writeHandler_X(uint16_t conn_handle, ble_service_t *p_service,
   uint8_t ciphertext[16] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
                             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
-  for (int i = 0; i < data_rec->len; i++)
+  for (int i = 0; i < dataRec->len; i++)
   {
-    plaintext[i] = data_rec->data[i];
+    plaintext[i] = dataRec->data[i];
   }
 
   NRF_LOG_INFO("Value %x %x %x %x", plaintext[0], plaintext[1], plaintext[2], plaintext[3]);
@@ -226,14 +340,17 @@ _writeHandler_X(uint16_t conn_handle, ble_service_t *p_service,
                d2[3]);
 }
 
-uint8_t global_plaintext[16] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+/*
+**  Handler to manage write events for the "SERVICE_Y_CHAR_B_ID" characteristic 
+*/
+uint8_t globalPlaintext[16] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                               0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 static void
 _writeHandler_Y(uint16_t conn_handle, ble_service_t *p_service,
-                uint8_t data_rec, uint8_t offset)
+                uint8_t dataRec, uint8_t offset)
 {
 
-  NRF_LOG_INFO("data received from service Y %x ", data_rec);
+  NRF_LOG_INFO("data received from service Y %x ", dataRec);
   uint8_t d2[16] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
                     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
@@ -243,14 +360,14 @@ _writeHandler_Y(uint16_t conn_handle, ble_service_t *p_service,
   uint8_t output[16] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
                         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
-  global_plaintext[offset] = data_rec;
+  globalPlaintext[offset] = dataRec;
 
-  NRF_LOG_INFO("Value %x %x %x %x", global_plaintext[0], global_plaintext[1], global_plaintext[2], global_plaintext[3]);
+  NRF_LOG_INFO("Value %x %x %x %x", globalPlaintext[0], globalPlaintext[1], globalPlaintext[2], globalPlaintext[3]);
 
   if (offset == 3)
   {
 
-    AES128_ECB_encrypt(global_plaintext, key, output);
+    AES128_ECB_encrypt(globalPlaintext, key, output);
     NRF_LOG_INFO("Value of ciphertext  %x %x %x %x", output[0], output[1],
                  output[2], output[3]);
 
@@ -260,6 +377,10 @@ _writeHandler_Y(uint16_t conn_handle, ble_service_t *p_service,
   }
 }
 
+/*
+**  Function to send notifications data when write events occur by "_writeHandler_Notify"
+** handler 
+*/
 static uint32_t
 _bleNotifyChar(uint16_t conn_handle, ble_gatts_char_handles_t *char_handle, const uint8_t *value)
 {
@@ -304,17 +425,23 @@ _bleNotifyChar(uint16_t conn_handle, ble_gatts_char_handles_t *char_handle, cons
   return err_code;
 }
 
+/*
+**  Handler to manage notification events for the "SERVICE_Z_CHAR_A_ID" characteristic 
+*/
 static void
-_writeHandler_Notify(uint16_t conn_handle, ble_service_t *p_service, ble_gatts_evt_write_t const *data_rec)
+_writeHandler_Notify(uint16_t conn_handle, ble_service_t *p_service, ble_gatts_evt_write_t const *dataRec)
 {
-  NRF_LOG_INFO("data received service Z %x ", data_rec->data[0]);
-  NRF_LOG_INFO("data received service Z %x ", data_rec->data[1]);
-  NRF_LOG_INFO("data received service Z %x ", data_rec->data[2]);
-  NRF_LOG_INFO("data received service Z %x ", data_rec->data[3]);
+  NRF_LOG_INFO("data received service Z %x ", dataRec->data[0]);
+  NRF_LOG_INFO("data received service Z %x ", dataRec->data[1]);
+  NRF_LOG_INFO("data received service Z %x ", dataRec->data[2]);
+  NRF_LOG_INFO("data received service Z %x ", dataRec->data[3]);
 
-  _bleNotifyChar(conn_handle, &p_service->char_notify_handles, data_rec->data);
+  _bleNotifyChar(conn_handle, &p_service->charNotifyHandles, dataRec->data);
 }
 
+/*
+**  Event listener on BLE Characteristics write events 
+*/
 static void
 on_write(ble_service_t *p_service, ble_evt_t const *p_ble_evt)
 {
@@ -322,14 +449,14 @@ on_write(ble_service_t *p_service, ble_evt_t const *p_ble_evt)
       &p_ble_evt->evt.gatts_evt.params.write;
 
   // Write the bytes array on a single Write-Event
-  if ((p_evt_write->len == 4) && (p_evt_write->handle == p_service->char_xa_handles.value_handle))
+  if ((p_evt_write->len == 4) && (p_evt_write->handle == p_service->charXaWriteHandles.value_handle))
   {
     _writeHandler_X(p_ble_evt->evt.gap_evt.conn_handle, p_service,
                     p_evt_write);
   }
 
   // Write 1 byte on each Write-Event
-  if ((p_evt_write->len == 4) && (p_evt_write->handle == p_service->char_ya_handles.value_handle))
+  if ((p_evt_write->len == 4) && (p_evt_write->handle == p_service->charXaWriteHandles.value_handle))
   {
     _writeHandler_Y(p_ble_evt->evt.gap_evt.conn_handle, p_service,
                     p_evt_write->data[0], 0);
@@ -342,75 +469,13 @@ on_write(ble_service_t *p_service, ble_evt_t const *p_ble_evt)
   }
 
   // Write the bytes array on a single Write-Event
-  if ((p_evt_write->len == 4) && (p_evt_write->handle == p_service->char_notify_handles.value_handle))
+  if ((p_evt_write->len == 4) && (p_evt_write->handle == p_service->charNotifyHandles.value_handle))
   {
     _writeHandler_Notify(p_ble_evt->evt.gap_evt.conn_handle, p_service,
                          p_evt_write);
   }
 }
 
-void bleServiceOnBleEvt(ble_evt_t const *p_ble_evt, void *p_context)
-{
-  ble_service_t *p_service = (ble_service_t *)p_context;
-
-  switch (p_ble_evt->header.evt_id)
-  {
-  case BLE_GATTS_EVT_WRITE:
-    on_write(p_service, p_ble_evt);
-    break;
-
-  default:
-    // No implementation needed.
-    break;
-  }
-}
-
-uint32_t
-bleServiceInit(ble_service_t *p_service, service_uuid_t service_t,
-               service_char_t *char_t, prop_attr_t *attr_prop,
-               attr_perm_t *attr_perm, attr_char_t *attr_char)
-{
-  uint32_t err_code;
-
-  // Add service.
-  err_code = _bleAddService(p_service, service_t);
-  VERIFY_SUCCESS(err_code);
-
-  if (service_t.service_id == SERVICE_X_ID)
-  {
-    // Add characteristics.
-    for (int i = 0; i < MAX_CHARACTERISTIC_X; i++)
-    {
-      err_code =
-          _bleAddCharacteristic(p_service, char_t[i], attr_prop[i],
-                                attr_perm[i], attr_char[i]);
-      VERIFY_SUCCESS(err_code);
-    }
-  }
-
-  if (service_t.service_id == SERVICE_Y_ID)
-  {
-    // Add characteristics.
-    for (int i = 0; i < MAX_CHARACTERISTIC_Y; i++)
-    {
-      err_code =
-          _bleAddCharacteristic(p_service, char_t[i], attr_prop[i],
-                                attr_perm[i], attr_char[i]);
-      VERIFY_SUCCESS(err_code);
-    }
-  }
-
-  if (service_t.service_id == SERVICE_Z_ID)
-  {
-    // Add characteristics.
-    for (int i = 0; i < MAX_CHARACTERISTIC_Z; i++)
-    {
-      err_code =
-          _bleAddCharacteristic(p_service, char_t[i], attr_prop[i],
-                                attr_perm[i], attr_char[i]);
-      VERIFY_SUCCESS(err_code);
-    }
-  }
-
-  return NRF_SUCCESS;
-}
+/********************************************************************************/
+/*   --- END of HANDLERS ---                                                    */
+/********************************************************************************/

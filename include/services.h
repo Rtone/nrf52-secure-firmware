@@ -11,9 +11,9 @@
                        BLE_SERVICES_BLE_OBSERVER_PRIO, \
                        bleServiceOnBleEvt, &_name)
 
-/************************************/
-/*First Service                     */
-/************************************/
+/**************************************/
+/*  First Service                     */
+/**************************************/
 #define SERVICE_UUID_SERVICE_X 0x1111
 #define SERVICE_X_ID 0x0001
 #define SERVICE_X_UUID_CHAR_A 0x0111
@@ -21,9 +21,9 @@
 #define SERVICE_X_UUID_CHAR_B 0x0222
 #define SERVICE_X_CHAR_B_ID 0X0002
 
-/************************************/
-/*Second Service                    */
-/************************************/
+/**************************************/
+/*  Second Service                    */
+/**************************************/
 #define SERVICE_UUID_SERVICE_Y 0x2222
 #define SERVICE_Y_ID 0x0002
 #define SERVICE_Y_UUID_CHAR_A 0x0333
@@ -31,9 +31,9 @@
 #define SERVICE_Y_UUID_CHAR_B 0x0444
 #define SERVICE_Y_CHAR_B_ID 0X0004
 
-/************************************/
-/*Third Service                    */
-/************************************/
+/*************************************/
+/*  Third Service                    */
+/*************************************/
 #define SERVICE_UUID_SERVICE_Z 0x3333
 #define SERVICE_Z_ID 0x0003
 #define SERVICE_Z_UUID_CHAR_A 0x0555
@@ -60,20 +60,20 @@
 typedef struct service_uuid_s
 {
   const ble_uuid128_t uuid128;
-  ble_uuid_t uuid_handle;
-  uint16_t service_id;
+  ble_uuid_t uuidHandle;
+  uint16_t serviceID;
 } service_uuid_t;
 
 typedef struct service_char_s
 {
   uint16_t uuid16;
-  uint16_t char_id;
+  uint16_t charID;
 } service_char_t;
 
 typedef struct attr_perm_s
 {
-  uint8_t perm_read;
-  uint8_t perm_write;
+  uint8_t permRead;
+  uint8_t permWrite;
 } attr_perm_t;
 
 typedef struct prop_attr_s
@@ -85,8 +85,8 @@ typedef struct prop_attr_s
 
 typedef struct attr_char_s
 {
-  uint8_t attr_char_read[10];
-  uint8_t attr_char_write[10];
+  uint8_t attrCharRead[10];
+  uint8_t attrCharWrite[10];
 } attr_char_t;
 
 typedef struct ble_service_s ble_service_t;
@@ -96,25 +96,24 @@ typedef void (*ble_service_char_handler_t)(uint16_t conn_handle,
 
 typedef struct
 {
-  ble_service_char_handler_t led_write_handler;
+  ble_service_char_handler_t writeHandler;
 } ble_service_init_t;
 
 struct ble_service_s
 {
-  uint16_t service_handle;
+  uint16_t serviceHandle;
   uint8_t uuid_type;
-  ble_gatts_char_handles_t char_default_handles;
-  ble_gatts_char_handles_t char_xa_handles;
-  ble_gatts_char_handles_t char_ya_handles;
-  ble_gatts_char_handles_t char_notify_handles;
-  ble_service_char_handler_t write_handler;
+  ble_gatts_char_handles_t charDefaultHandles;
+  ble_gatts_char_handles_t charXaWriteHandles;
+  ble_gatts_char_handles_t charYaWriteHandles;
+  ble_gatts_char_handles_t charNotifyHandles;
+  ble_service_char_handler_t writeHandler;
 };
 
 void bleServiceOnBleEvt(ble_evt_t const *p_ble_evt, void *p_context);
-void ledWriteHandler(uint16_t conn_handle, ble_service_t *p_lbs,
-                     uint8_t led_state);
+
 uint32_t bleServiceInit(ble_service_t *p_service, service_uuid_t service_t,
                         service_char_t *char_t, prop_attr_t *prop,
-                        attr_perm_t *attr_perm, attr_char_t *attr_char);
+                        attr_perm_t *attrPerm, attr_char_t *attrChar);
 
 #endif /* __SERVICES_H */

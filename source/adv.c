@@ -20,107 +20,129 @@
 #include "app.h"
 #include "adv.h"
 
+/********************************************************************************/
+/*   FUNCTION PROTOTYPES                                                        */
+/********************************************************************************/
 
 static void
-_sleepModeEnter (void)
+_sleepModeEnter(void);
+
+static void
+_onAdvEvt(ble_adv_evt_t bleAdvEvt);
+
+/********************************************************************************/
+/*   --- END of FUNCTION PROTOTYPES ---                                         */
+/********************************************************************************/
+
+/********************************************************************************/
+/*   HANDLERS                                                                   */
+/********************************************************************************/
+
+static void
+_sleepModeEnter(void)
 {
   ret_code_t err_code;
 
-  err_code = bsp_indication_set (BSP_INDICATE_IDLE);
-  APP_ERROR_CHECK (err_code);
+  err_code = bsp_indication_set(BSP_INDICATE_IDLE);
+  APP_ERROR_CHECK(err_code);
 
-  err_code = bsp_btn_ble_sleep_mode_prepare ();
-  APP_ERROR_CHECK (err_code);
+  err_code = bsp_btn_ble_sleep_mode_prepare();
+  APP_ERROR_CHECK(err_code);
 
-  err_code = sd_power_system_off ();
-  APP_ERROR_CHECK (err_code);
+  err_code = sd_power_system_off();
+  APP_ERROR_CHECK(err_code);
 }
 
-
 static void
-_onAdvEvt (ble_adv_evt_t ble_adv_evt)
+_onAdvEvt(ble_adv_evt_t bleAdvEvt)
 {
   ret_code_t err_code;
 
-  switch (ble_adv_evt)
-    {
-    case BLE_ADV_EVT_FAST:
-      NRF_LOG_INFO ("Fast advertising.");
-      err_code = bsp_indication_set (BSP_INDICATE_ADVERTISING);
-      APP_ERROR_CHECK (err_code);
-      break;
+  switch (bleAdvEvt)
+  {
+  case BLE_ADV_EVT_FAST:
+    NRF_LOG_INFO("Fast advertising...");
+    err_code = bsp_indication_set(BSP_INDICATE_ADVERTISING);
+    APP_ERROR_CHECK(err_code);
+    break;
 
-    case BLE_ADV_EVT_SLOW:
-      NRF_LOG_INFO ("Slow advertising.");
-      break;
+  case BLE_ADV_EVT_SLOW:
+    NRF_LOG_INFO("Slow advertising...");
+    break;
 
-    case BLE_ADV_EVT_DIRECTED:
-      NRF_LOG_INFO ("Directed advertising.");
-      break;
+  case BLE_ADV_EVT_DIRECTED:
+    NRF_LOG_INFO("Directed advertising...");
+    break;
 
-    case BLE_ADV_EVT_IDLE:
-      _sleepModeEnter ();
-      break;
+  case BLE_ADV_EVT_IDLE:
+    _sleepModeEnter();
+    break;
 
-    default:
-      break;
-    }
+  default:
+    break;
+  }
 }
 
+/********************************************************************************/
+/*   --- END of HANDLERS ---                                                    */
+/********************************************************************************/
 
-void
-advertisingInit (ble_adv_init * adv_init)
+/********************************************************************************/
+/*   BLE ADVERTISING FUCTIONS                                                   */
+/********************************************************************************/
+
+void advertisingInit(ble_adv_init *advInit)
 {
   ret_code_t err_code;
   ble_advertising_init_t init;
 
-  memset (&init, 0, sizeof (init));
+  memset(&init, 0, sizeof(init));
 
-  init.advdata.name_type = adv_init->name_type;
-  init.advdata.include_appearance = adv_init->appearance;
+  init.advdata.name_type = advInit->nameType;
+  init.advdata.include_appearance = advInit->appearance;
   init.advdata.flags = BLE_GAP_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE;
-  init.advdata.uuids_complete.uuid_cnt = adv_init->uuid_cnt;
-  init.advdata.uuids_complete.p_uuids = adv_init->p_uuids;
+  init.advdata.uuids_complete.uuid_cnt = advInit->uuid_cnt;
+  init.advdata.uuids_complete.p_uuids = advInit->p_uuids;
 
-  if (adv_init->fast)
-    {
-      init.config.ble_adv_fast_enabled = true;
-      init.config.ble_adv_fast_interval = adv_init->interval_adv;
-      init.config.ble_adv_fast_timeout = adv_init->timeout_adv;
-    }
+  if (advInit->fast)
+  {
+    init.config.ble_adv_fast_enabled = true;
+    init.config.ble_adv_fast_interval = advInit->intervalAdv;
+    init.config.ble_adv_fast_timeout = advInit->timeoutAdv;
+  }
 
-  if (adv_init->slow)
-    {
-      init.config.ble_adv_slow_enabled = true;
-      init.config.ble_adv_slow_interval = adv_init->interval_adv;
-      init.config.ble_adv_slow_timeout = adv_init->timeout_adv;
-    }
+  if (advInit->slow)
+  {
+    init.config.ble_adv_slow_enabled = true;
+    init.config.ble_adv_slow_interval = advInit->intervalAdv;
+    init.config.ble_adv_slow_timeout = advInit->timeoutAdv;
+  }
 
   init.evt_handler = _onAdvEvt;
 
-  err_code = ble_advertising_init (&m_advertising, &init);
-  APP_ERROR_CHECK (err_code);
+  err_code = ble_advertising_init(&m_advertising, &init);
+  APP_ERROR_CHECK(err_code);
 
-
-  ble_advertising_conn_cfg_tag_set (&m_advertising, APP_BLE_CONN_CFG_TAG);
+  ble_advertising_conn_cfg_tag_set(&m_advertising, APP_BLE_CONN_CFG_TAG);
 }
 
-
-void
-advertisingStart ()
+void advertisingStart()
 {
   if (m_advertising.adv_modes_config.ble_adv_fast_enabled)
-    {
-      ret_code_t err_code =
-	ble_advertising_start (&m_advertising, BLE_ADV_MODE_FAST);
-      APP_ERROR_CHECK (err_code);
-    }
+  {
+    ret_code_t err_code =
+        ble_advertising_start(&m_advertising, BLE_ADV_MODE_FAST);
+    APP_ERROR_CHECK(err_code);
+  }
 
   if (m_advertising.adv_modes_config.ble_adv_slow_enabled)
-    {
-      ret_code_t err_code =
-	ble_advertising_start (&m_advertising, BLE_ADV_MODE_SLOW);
-      APP_ERROR_CHECK (err_code);
-    }
-
+  {
+    ret_code_t err_code =
+        ble_advertising_start(&m_advertising, BLE_ADV_MODE_SLOW);
+    APP_ERROR_CHECK(err_code);
+  }
 }
+
+/********************************************************************************/
+/*   --- END of BLE ADVERTISING FUCTIONS ---                                    */
+/********************************************************************************/

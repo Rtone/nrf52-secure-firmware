@@ -3,7 +3,7 @@
 
 ble_opt_t m_static_pin_option;
 
-void leSecureConn (void);
-void legacyPairing (void);
+void leSecureConn(void);
+void legacyPairing(void);
 
 #endif /* __PM_H */
