@@ -2,6 +2,9 @@
 #define __ADV_H
 
 typedef struct ble_adv_init_t ble_adv_init;
+pm_peer_id_t pmPeerID;
+pm_peer_id_t pmWhitelistPeers[BLE_GAP_WHITELIST_ADDR_MAX_COUNT];
+uint32_t pmWhitelistPeerCnt;
 
 struct ble_adv_init_t
 {
@@ -9,6 +12,7 @@ struct ble_adv_init_t
   bool appearance;
   bool fast;
   bool slow;
+  bool whitelist;
   uint32_t intervalAdv;
   uint32_t timeoutAdv;
 

@@ -15,6 +15,7 @@
 #include "nrf_crypto_keys.h"
 #include "le_secure.h"
 #include "pm.h"
+#include "adv.h"
 #include "app.h"
 
 /********************************************************************************/
@@ -135,7 +136,7 @@ _pmEvtHandler(pm_evt_t const *p_evt)
   case PM_EVT_BONDED_PEER_CONNECTED:
   {
     NRF_LOG_INFO("Connected to a previously bonded device.");
-    _deleteBonds();
+    //_deleteBonds();
   }
   break;
 
@@ -247,6 +248,32 @@ _pmEvtHandler(pm_evt_t const *p_evt)
   }
   break;
   case PM_EVT_PEER_DATA_UPDATE_SUCCEEDED:
+  {
+    if (p_evt->params.peer_data_update_succeeded.flash_changed && (p_evt->params.peer_data_update_succeeded.data_id == PM_PEER_DATA_ID_BONDING))
+    {
+      NRF_LOG_INFO("New Bond, add the peer to the whitelist if possible");
+      NRF_LOG_INFO("\tm_whitelist_peer_cnt %d, MAX_PEERS_WLIST %d",
+                   pmWhitelistPeerCnt + 1,
+                   BLE_GAP_WHITELIST_ADDR_MAX_COUNT);
+      // Note: You should check on what kind of white list policy your application should use.
+
+      if (pmWhitelistPeerCnt < BLE_GAP_WHITELIST_ADDR_MAX_COUNT)
+      {
+        // Bonded to a new peer, add it to the whitelist.
+        pmWhitelistPeers[pmWhitelistPeerCnt++] = pmPeerID;
+
+        // The whitelist has been modified, update it in the Peer Manager.
+        err_code = pm_whitelist_set(pmWhitelistPeers, pmWhitelistPeerCnt);
+        APP_ERROR_CHECK(err_code);
+
+        err_code = pm_device_identities_list_set(pmWhitelistPeers, pmWhitelistPeerCnt);
+        if (err_code != NRF_ERROR_NOT_SUPPORTED)
+        {
+          APP_ERROR_CHECK(err_code);
+        }
+      }
+    }
+  }
   case PM_EVT_PEER_DELETE_SUCCEEDED:
   case PM_EVT_LOCAL_DB_CACHE_APPLIED:
   case PM_EVT_SERVICE_CHANGED_IND_SENT:

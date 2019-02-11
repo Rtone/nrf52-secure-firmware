@@ -235,6 +235,7 @@ void advInitApp()
   configAdv.nameType = BLE_ADVDATA_FULL_NAME;
   configAdv.appearance = true;
   configAdv.fast = true;
+  configAdv.whitelist = false;
   configAdv.intervalAdv = 300;
   configAdv.timeoutAdv = 50;
   configAdv.uuid_cnt = 0;
